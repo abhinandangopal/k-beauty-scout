@@ -14,9 +14,9 @@ def get_gemini_model(api_key=None):
     else:
         genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
     
-    # We use gemini-1.5-pro or flash. Let's use gemini-1.5-flash for faster responses,
+    # We use gemini-1.5-pro or flash. Let's use gemini-flash-latest for faster responses,
     # but the prompt works with gemini-1.5-pro as well.
-    return genai.GenerativeModel('gemini-1.5-flash')
+    return genai.GenerativeModel('gemini-flash-latest')
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",

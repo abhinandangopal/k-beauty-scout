@@ -92,14 +92,18 @@ if not st.session_state.results_df.empty:
     with c2: st.metric("Top Recommended", top_brand['Brand Name'], f"Score: {top_brand['Suitability Score']}")
     with c3: st.metric("Average Score", int(df['Suitability Score'].mean()))
         
-    fig = px.scatter(
-        df, x="Global Maturity Score", y="India Exclusivity Score", color="Price Positioning",
-        size="Suitability Score", hover_name="Brand Name", hover_data=["Formulation USP"], text="Brand Name",
-        range_x=[0, 11], range_y=[0, 11], template="plotly_dark",
-        color_discrete_map={"Budget": "#3b82f6", "Mid-Premium": "#10b981", "Luxury": "#8b5cf6", "Unknown": "#64748b"}
-    )
-    fig.update_traces(textposition='top center')
-    st.plotly_chart(fig, use_container_width=True)
+    plot_df = df[df['Suitability Score'] > 0]
+    if not plot_df.empty:
+        fig = px.scatter(
+            plot_df, x="Global Maturity Score", y="India Exclusivity Score", color="Price Positioning",
+            size="Suitability Score", hover_name="Brand Name", hover_data=["Formulation USP"], text="Brand Name",
+            range_x=[0, 11], range_y=[0, 11], template="plotly_dark",
+            color_discrete_map={"Budget": "#3b82f6", "Mid-Premium": "#10b981", "Luxury": "#8b5cf6", "Unknown": "#64748b"}
+        )
+        fig.update_traces(textposition='top center')
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("No valid scores to plot. (Check API Key if you see only 0 scores).")
 
     st.dataframe(df, use_container_width=True)
 else:
