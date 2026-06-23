@@ -79,6 +79,19 @@ def evaluate_brand_with_gemini(brand_data, model):
        - 30% Price Point (Mid-Premium is best)
        - 30% Exclusivity (Low saturation in India)
 
+    Also provide deeper advanced analytics:
+    - Formulation Complexity Score (0-10)
+    - Brand Buzz Score (0-10)
+    - Pricing Competitiveness (0-10)
+    - Target Demographic (e.g. Gen-Z Acne-prone)
+    - Hero Product (Identify the #1 best seller and its viability in India's hot/humid climate)
+    - Market Gap Fit (Does this fill a specific gap in the Indian market?)
+    - Pricing Strategy (Recommendation on how Glide should price it against local competitors)
+    - Detailed Logic (1 paragraph deep-dive into the strategic reasoning)
+    - Pros (list of 2 strings)
+    - Cons (list of 2 strings)
+    - Key Ingredients (list of 3 strings)
+
     Return a STRICT JSON response exactly matching this structure (no markdown tags like ```json):
     {{
         "Brand Name": "{brand_data['brand_name']}",
@@ -88,7 +101,17 @@ def evaluate_brand_with_gemini(brand_data, model):
         "Price Positioning": "Mid-Premium",
         "Formulation USP": "Brief description",
         "Suitability Score": 85,
-        "Rationale": "1-2 sentence explanation"
+        "Formulation Complexity Score": 7,
+        "Brand Buzz Score": 8,
+        "Pricing Competitiveness": 8,
+        "Target Demographic": "Millennial Anti-aging",
+        "Hero Product": "Water Sleeping Mask - highly viable due to lightweight gel texture suitable for humid climates.",
+        "Market Gap Fit": "Fills the gap for premium hydration without heaviness.",
+        "Pricing Strategy": "Premium positioning to compete with Clinique rather than local mass market.",
+        "Detailed Logic": "Laneige offers immense global brand equity...",
+        "Pros": ["High global recognition", "Clinically backed formulations"],
+        "Cons": ["Already available via grey market in India", "Higher price point"],
+        "Key Ingredients": ["Hyaluronic Acid", "Squalane", "Probiotics"]
     }}
     """
     
@@ -118,7 +141,17 @@ def evaluate_brand_with_gemini(brand_data, model):
                     "Price Positioning": "Unknown",
                     "Formulation USP": "Error processing",
                     "Suitability Score": 0,
-                    "Rationale": f"API Error: {str(e)}"
+                    "Formulation Complexity Score": 0,
+                    "Brand Buzz Score": 0,
+                    "Pricing Competitiveness": 0,
+                    "Target Demographic": "Unknown",
+                    "Hero Product": "Unknown",
+                    "Market Gap Fit": "Unknown",
+                    "Pricing Strategy": "Unknown",
+                    "Detailed Logic": f"API Error: {str(e)}",
+                    "Pros": [],
+                    "Cons": [],
+                    "Key Ingredients": []
                 }
 
 def process_brand(brand_name, api_key=None):

@@ -5,6 +5,7 @@ import os
 import time
 from pipeline import process_brand
 from discovery import fetch_potential_brands
+from report_generator import generate_pdf_report
 
 st.set_page_config(page_title="K-Beauty Scout | Glide", page_icon="✨", layout="wide")
 
@@ -28,7 +29,10 @@ if 'results_df' not in st.session_state:
     st.session_state.results_df = pd.DataFrame(columns=[
         "Brand Name", "Global Maturity Score", "India Saturation Level", 
         "India Exclusivity Score", "Price Positioning", "Formulation USP", 
-        "Suitability Score", "Rationale"
+        "Suitability Score", "Formulation Complexity Score", "Brand Buzz Score",
+        "Pricing Competitiveness", "Target Demographic", "Hero Product",
+        "Market Gap Fit", "Pricing Strategy", "Detailed Logic", "Pros", "Cons",
+        "Key Ingredients", "Rationale"
     ])
 
 st.subheader("🚀 Live Evaluation Engine")
@@ -121,6 +125,47 @@ if not st.session_state.results_df.empty:
     else:
         st.warning("No valid scores to plot. (Check API Key if you see only 0 scores).")
 
+    st.markdown("---")
+    st.subheader("Deep Dive Intelligence")
+    
+    for idx, row in plot_df.iterrows():
+        with st.expander(f"🔎 {row['Brand Name']} - Advanced Analysis (Score: {int(row['Suitability Score'])})"):
+            colA, colB = st.columns([1, 2])
+            with colA:
+                # Radar Chart
+                radar_data = pd.DataFrame(dict(
+                    r=[row['Global Maturity Score'], row['India Exclusivity Score'], row.get('Formulation Complexity Score', 0), row.get('Brand Buzz Score', 0), row.get('Pricing Competitiveness', 0)],
+                    theta=['Global Maturity', 'India Exclusivity', 'Formulation', 'Brand Buzz', 'Pricing Strategy']
+                ))
+                fig_radar = px.line_polar(radar_data, r='r', theta='theta', line_close=True, template="plotly_dark", range_r=[0, 10])
+                fig_radar.update_traces(fill='toself')
+                st.plotly_chart(fig_radar, use_container_width=True)
+            with colB:
+                st.markdown(f"**Hero Product:** {row.get('Hero Product', 'N/A')}")
+                st.markdown(f"**Target Demographic:** {row.get('Target Demographic', 'N/A')}")
+                st.markdown(f"**Market Gap Fit:** {row.get('Market Gap Fit', 'N/A')}")
+                st.markdown(f"**Detailed Strategy:** {row.get('Detailed Logic', row.get('Rationale', ''))}")
+                
+                c_pro, c_con = st.columns(2)
+                with c_pro:
+                    st.success("**Pros**")
+                    for p in row.get('Pros', []): st.write(f"- {p}")
+                with c_con:
+                    st.error("**Risks/Cons**")
+                    for c in row.get('Cons', []): st.write(f"- {c}")
+
+    st.markdown("---")
+    st.subheader("Raw Data & Export")
     st.dataframe(df, use_container_width=True)
+    
+    # PDF Generator
+    pdf_bytes = generate_pdf_report(df)
+    st.download_button(
+        label="📄 Download Full Intelligence Report (PDF)",
+        data=pdf_bytes,
+        file_name="glide_kbeauty_scout_report.pdf",
+        mime="application/pdf",
+        type="primary"
+    )
 else:
     st.info("No brands evaluated yet. Run an evaluation above.")
