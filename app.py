@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+import time
 from pipeline import process_brand
 from discovery import fetch_potential_brands
 
@@ -77,6 +78,12 @@ if run_batch:
                     st.session_state.results_df = pd.concat([st.session_state.results_df, new_row], ignore_index=True).drop_duplicates(subset=["Brand Name"])
                 except Exception as e:
                     st.error(f"Failed to process {brand}. Error: {str(e)}")
+            
+            # Smart pause to respect free tier rate limits
+            if i < len(target_brands) - 1:
+                with st.spinner("Pausing 15 seconds to respect free API limits..."):
+                    time.sleep(15)
+
             progress_bar.progress((i + 1) / num_to_evaluate)
         st.success("Batch Execution Complete!")
 
