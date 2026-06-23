@@ -2,6 +2,16 @@ from fpdf import FPDF
 import tempfile
 import os
 
+def clean_text(text):
+    """Clean text to be safe for FPDF Helvetica font."""
+    if not isinstance(text, str):
+        text = str(text)
+    # Replace common problematic unicode characters
+    text = text.replace('\u2019', "'").replace('\u2018', "'").replace('\u201c', '"').replace('\u201d', '"')
+    text = text.replace('\u2013', '-').replace('\u2014', '-')
+    # Encode to latin-1 to drop any unsupported characters like emojis or Korean text
+    return text.encode('latin-1', 'replace').decode('latin-1')
+
 def generate_pdf_report(df):
     """Generates a professional PDF report from the DataFrame."""
     pdf = FPDF()
@@ -19,7 +29,8 @@ def generate_pdf_report(df):
     pdf.set_font("Helvetica", "B", 14)
     pdf.cell(0, 10, f"Executive Summary", ln=True)
     pdf.set_font("Helvetica", "", 11)
-    pdf.multi_cell(0, 8, f"This report evaluates {len(df)} international beauty brands for potential launch in the Indian market. Brands are assessed across global maturity, India market exclusivity, pricing strategy, and formulation viability.")
+    summary_text = f"This report evaluates {len(df)} international beauty brands for potential launch in the Indian market. Brands are assessed across global maturity, India market exclusivity, pricing strategy, and formulation viability."
+    pdf.multi_cell(0, 8, clean_text(summary_text))
     pdf.ln(5)
     
     for index, row in df.iterrows():
@@ -28,32 +39,32 @@ def generate_pdf_report(df):
         # Brand Header
         pdf.set_font("Helvetica", "B", 18)
         pdf.set_text_color(220, 20, 60) # Crimson
-        pdf.cell(0, 10, f"{row['Brand Name']}", ln=True)
+        pdf.cell(0, 10, clean_text(row['Brand Name']), ln=True)
         pdf.set_text_color(0, 0, 0)
         
         pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(0, 8, f"Glide Launch Suitability Score: {row['Suitability Score']}/100", ln=True)
+        pdf.cell(0, 8, clean_text(f"Glide Launch Suitability Score: {row.get('Suitability Score', 0)}/100"), ln=True)
         pdf.set_font("Helvetica", "", 10)
-        pdf.cell(0, 6, f"Price Positioning: {row['Price Positioning']}  |  Demographic: {row.get('Target Demographic', 'Unknown')}", ln=True)
+        pdf.cell(0, 6, clean_text(f"Price Positioning: {row.get('Price Positioning', 'Unknown')}  |  Demographic: {row.get('Target Demographic', 'Unknown')}"), ln=True)
         pdf.ln(5)
         
         # Advanced Analytics Sub-Scores
         pdf.set_font("Helvetica", "B", 12)
         pdf.cell(0, 8, "Core Metrics (0-10)", ln=True)
         pdf.set_font("Helvetica", "", 10)
-        pdf.cell(45, 6, f"Global Maturity: {row['Global Maturity Score']}")
-        pdf.cell(45, 6, f"India Exclusivity: {row['India Exclusivity Score']}")
-        pdf.cell(45, 6, f"Brand Buzz: {row.get('Brand Buzz Score', 0)}")
-        pdf.cell(45, 6, f"Formulation: {row.get('Formulation Complexity Score', 0)}")
+        pdf.cell(45, 6, clean_text(f"Global Maturity: {row.get('Global Maturity Score', 0)}"))
+        pdf.cell(45, 6, clean_text(f"India Exclusivity: {row.get('India Exclusivity Score', 0)}"))
+        pdf.cell(45, 6, clean_text(f"Brand Buzz: {row.get('Brand Buzz Score', 0)}"))
+        pdf.cell(45, 6, clean_text(f"Formulation: {row.get('Formulation Complexity Score', 0)}"))
         pdf.ln(10)
         
         # Strategy
         pdf.set_font("Helvetica", "B", 12)
         pdf.cell(0, 8, "Market Strategy", ln=True)
         pdf.set_font("Helvetica", "", 10)
-        pdf.multi_cell(0, 6, f"Hero Product: {row.get('Hero Product', 'N/A')}")
-        pdf.multi_cell(0, 6, f"Market Gap Fit: {row.get('Market Gap Fit', 'N/A')}")
-        pdf.multi_cell(0, 6, f"Pricing Strategy: {row.get('Pricing Strategy', 'N/A')}")
+        pdf.multi_cell(0, 6, clean_text(f"Hero Product: {row.get('Hero Product', 'N/A')}"))
+        pdf.multi_cell(0, 6, clean_text(f"Market Gap Fit: {row.get('Market Gap Fit', 'N/A')}"))
+        pdf.multi_cell(0, 6, clean_text(f"Pricing Strategy: {row.get('Pricing Strategy', 'N/A')}"))
         pdf.ln(5)
         
         # Detailed Logic
@@ -61,9 +72,7 @@ def generate_pdf_report(df):
         pdf.cell(0, 8, "Detailed Strategic Rationale", ln=True)
         pdf.set_font("Helvetica", "", 10)
         logic = row.get('Detailed Logic', row.get('Rationale', 'N/A'))
-        # Fix encoding issues by replacing unsupported chars
-        logic = logic.encode('latin-1', 'replace').decode('latin-1')
-        pdf.multi_cell(0, 6, logic)
+        pdf.multi_cell(0, 6, clean_text(logic))
         pdf.ln(5)
         
         # Pros and Cons
@@ -73,23 +82,23 @@ def generate_pdf_report(df):
         pros = row.get('Pros', [])
         cons = row.get('Cons', [])
         
-        if pros:
+        if pros and isinstance(pros, list):
             pdf.cell(0, 6, "Strengths:", ln=True)
             for p in pros:
-                pdf.multi_cell(0, 6, f"  + {p.encode('latin-1', 'replace').decode('latin-1')}")
-        if cons:
+                pdf.multi_cell(0, 6, clean_text(f"  + {p}"))
+        if cons and isinstance(cons, list):
             pdf.cell(0, 6, "Weaknesses/Risks:", ln=True)
             for c in cons:
-                pdf.multi_cell(0, 6, f"  - {c.encode('latin-1', 'replace').decode('latin-1')}")
+                pdf.multi_cell(0, 6, clean_text(f"  - {c}"))
         pdf.ln(5)
         
         # Key Ingredients
         ingreds = row.get('Key Ingredients', [])
-        if ingreds:
+        if ingreds and isinstance(ingreds, list):
             pdf.set_font("Helvetica", "B", 12)
             pdf.cell(0, 8, "Key Ingredients", ln=True)
             pdf.set_font("Helvetica", "", 10)
-            pdf.multi_cell(0, 6, ", ".join(ingreds).encode('latin-1', 'replace').decode('latin-1'))
+            pdf.multi_cell(0, 6, clean_text(", ".join(ingreds)))
     
     # Save to a temporary file and return the bytes
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
