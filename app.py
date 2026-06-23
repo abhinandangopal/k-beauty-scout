@@ -93,22 +93,31 @@ st.header("📊 Evaluation Dashboard")
 if not st.session_state.results_df.empty:
     df = st.session_state.results_df
     
+    df['Suitability Score'] = pd.to_numeric(df['Suitability Score'], errors='coerce').fillna(0)
+    df['Global Maturity Score'] = pd.to_numeric(df['Global Maturity Score'], errors='coerce').fillna(0)
+    df['India Exclusivity Score'] = pd.to_numeric(df['India Exclusivity Score'], errors='coerce').fillna(0)
+    
     c1, c2, c3 = st.columns(3)
-    top_brand = df.loc[df['Suitability Score'].idxmax()]
+    top_brand = df.loc[df['Suitability Score'].idxmax()] if not df.empty and df['Suitability Score'].max() > 0 else None
+    
     with c1: st.metric("Brands Evaluated", len(df))
-    with c2: st.metric("Top Recommended", top_brand['Brand Name'], f"Score: {top_brand['Suitability Score']}")
+    if top_brand is not None:
+        with c2: st.metric("Top Recommended", top_brand['Brand Name'], f"Score: {int(top_brand['Suitability Score'])}")
     with c3: st.metric("Average Score", int(df['Suitability Score'].mean()))
         
     plot_df = df[df['Suitability Score'] > 0]
     if not plot_df.empty:
-        fig = px.scatter(
-            plot_df, x="Global Maturity Score", y="India Exclusivity Score", color="Price Positioning",
-            size="Suitability Score", hover_name="Brand Name", hover_data=["Formulation USP"], text="Brand Name",
-            range_x=[0, 11], range_y=[0, 11], template="plotly_dark",
-            color_discrete_map={"Budget": "#3b82f6", "Mid-Premium": "#10b981", "Luxury": "#8b5cf6", "Unknown": "#64748b"}
-        )
-        fig.update_traces(textposition='top center')
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            fig = px.scatter(
+                plot_df, x="Global Maturity Score", y="India Exclusivity Score", color="Price Positioning",
+                size="Suitability Score", hover_name="Brand Name", hover_data=["Formulation USP"], text="Brand Name",
+                range_x=[0, 11], range_y=[0, 11], template="plotly_dark",
+                color_discrete_map={"Budget": "#3b82f6", "Mid-Premium": "#10b981", "Luxury": "#8b5cf6", "Unknown": "#64748b"}
+            )
+            fig.update_traces(textposition='top center')
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.error(f"Could not render chart due to data formatting: {e}")
     else:
         st.warning("No valid scores to plot. (Check API Key if you see only 0 scores).")
 
