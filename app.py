@@ -32,7 +32,7 @@ st.markdown("""
         margin-bottom: 1.5rem;
     }
     </style>
-""", unsafe_allow_type=True)
+""", unsafe_allow_html=True)
 
 # App Sidebar
 st.sidebar.image("https://img.icons8.com/ios-filled/100/ffffff/compass.png", width=60)
@@ -55,8 +55,8 @@ if "scouted_brands" not in st.session_state:
     st.session_state.scouted_brands = list(pipeline.DEMO_DATA.values())
 
 # Main View
-st.markdown('<div class="main-header">✨ K-Beauty Scouting Suite</div>', unsafe_allow_type=True)
-st.markdown('<div class="sub-header">Automated global research, enrichment, and LLM-driven market validation framework for Glide India</div>', unsafe_allow_type=True)
+st.markdown('<div class="main-header">✨ K-Beauty Scouting Suite</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Automated global research, enrichment, and LLM-driven market validation framework for Glide India</div>', unsafe_allow_html=True)
 
 col1, col2 = st.columns([1, 1.3])
 
@@ -120,7 +120,7 @@ with col1:
                     Gemini Free Tier API quota exceeded or key missing. The pipeline gracefully self-healed, 
                     using <strong>Deterministic Market Heuristics</strong> to generate this scorecard.
                 </div>
-            """, unsafe_allow_type=True)
+            """, unsafe_allow_html=True)
             
         st.subheader(f"Scorecard: {r['brand_name']}")
         
