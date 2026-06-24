@@ -1,171 +1,179 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import os
-import time
-from pipeline import process_brand
-from discovery import fetch_potential_brands
-from report_generator import generate_pdf_report
+import pipeline
+import json
 
-st.set_page_config(page_title="K-Beauty Scout | Glide", page_icon="✨", layout="wide")
+st.set_page_config(
+    page_title="Glide | K-Beauty Scouting System",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
+# Custom header styling
 st.markdown("""
-<style>
-    .reportview-container .main .block-container{ padding-top: 2rem; }
-</style>
-""", unsafe_allow_html=True)
+    <style>
+    .main-header {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 0.2rem;
+    }
+    .sub-header {
+        font-size: 1.1rem;
+        font-weight: 400;
+        margin-bottom: 2rem;
+        opacity: 0.85;
+    }
+    .fallback-box {
+        background-color: rgba(255, 75, 75, 0.1);
+        border: 1px solid rgba(255, 75, 75, 0.3);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    </style>
+""", unsafe_allow_type=True)
 
-st.title("✨ K-Beauty Scout for Glide")
-st.markdown("Live Discovery & Evaluation Engine for International Beauty Brands")
+# App Sidebar
+st.sidebar.image("https://img.icons8.com/ios-filled/100/ffffff/compass.png", width=60)
+st.sidebar.title("Configuration")
 
-with st.sidebar:
-    st.header("⚙️ Configuration")
-    st.warning("Live Evaluation requires a Gemini API Key.")
-    api_key = st.text_input("Gemini API Key", type="password", help="Enter your Google Gemini API Key here. If deployed on Streamlit Cloud with Secrets, leave blank.")
-    if not api_key:
-        api_key = os.environ.get("GEMINI_API_KEY", "")
-        
-if 'results_df' not in st.session_state:
-    st.session_state.results_df = pd.DataFrame(columns=[
-        "Brand Name", "Global Maturity Score", "India Saturation Level", 
-        "India Exclusivity Score", "Price Positioning", "Formulation USP", 
-        "Suitability Score", "Formulation Complexity Score", "Brand Buzz Score",
-        "Pricing Competitiveness", "Target Demographic", "Hero Product",
-        "Market Gap Fit", "Pricing Strategy", "Detailed Logic", "Pros", "Cons",
-        "Key Ingredients", "Rationale"
-    ])
+# Toggle between Demo and Live
+run_mode = st.sidebar.radio(
+    "Choose Execution Mode",
+    ["Demo Mode (Free, Instant)", "Live Pipeline (Scrape & Evaluate)"],
+    help="Demo Mode uses pre-cached market analyses. Live Mode queries search indexes and runs Gemini dynamically."
+)
 
-st.subheader("🚀 Live Evaluation Engine")
-st.markdown("Enter a specific brand to evaluate, or run a batch from the discovery engine.")
+api_key_input = ""
+if run_mode == "Live Pipeline (Scrape & Evaluate)":
+    st.sidebar.warning("Live run requires Gemini API validation credentials.")
+    api_key_input = st.sidebar.text_input("Gemini API Key", type="password")
 
-col1, col2 = st.columns(2)
+# Initialization of local session storage
+if "scouted_brands" not in st.session_state:
+    st.session_state.scouted_brands = list(pipeline.DEMO_DATA.values())
+
+# Main View
+st.markdown('<div class="main-header">✨ K-Beauty Scouting Suite</div>', unsafe_allow_type=True)
+st.markdown('<div class="sub-header">Automated global research, enrichment, and LLM-driven market validation framework for Glide India</div>', unsafe_allow_type=True)
+
+col1, col2 = st.columns([1, 1.3])
 
 with col1:
-    st.markdown("#### Single Brand Lookup")
-    brand_input = st.text_input("Brand Name", "Laneige")
-    run_single = st.button("Evaluate Single Brand")
+    st.subheader("Brand Ingestion Dashboard")
+    
+    if run_mode == "Demo Mode (Free, Instant)":
+        selected_demo = st.selectbox(
+            "Select cached brand profile to evaluate:",
+            list(pipeline.DEMO_DATA.keys())
+        )
+        if st.button("Simulate Pipeline Execution", use_container_width=True):
+            with st.spinner("Executing pipeline phases... Scraped, Enriching, Running Gemini evaluation..."):
+                st.toast("Phase 1: Emulating retail searches...")
+                st.toast("Phase 2: Checking Indian saturation indexes...")
+                st.toast("Phase 3: Formatting AI validation reports...")
+                st.success("Analysis Complete!")
+                st.session_state.active_report = pipeline.DEMO_DATA[selected_demo]
+                
+    else:
+        brand_input = st.text_input("Enter New K-Beauty Brand Name (e.g., Laneige, Purito, Round Lab)", value="")
+        if st.button("Trigger Live Discovery Pipeline", use_container_width=True):
+            if not brand_input.strip():
+                st.error("Please provide a valid brand name.")
+            else:
+                # 1. Quick Local Database Interception (Zero-Cost Cache Check)
+                matched_key = next((k for k in pipeline.DEMO_DATA.keys() if k.lower() == brand_input.strip().lower()), None)
+                
+                if matched_key:
+                    st.info(f"Loaded high-fidelity evaluation for '{brand_input}' instantly from secure local memory.")
+                    st.session_state.active_report = pipeline.DEMO_DATA[matched_key]
+                else:
+                    with st.spinner(f"Scouting global networks for '{brand_input}'..."):
+                        try:
+                            # Step 1: Web Scraper & Saturation Checker
+                            context, saturation = pipeline.fetch_search_context(brand_input)
+                            
+                            # Step 2: Call Gemini Engine (Self-Healing handles 429 Quota blocks automatically)
+                            report = pipeline.run_gemini_evaluation(
+                                brand_input, context, saturation, custom_key=api_key_input
+                            )
+                            st.session_state.active_report = report
+                            
+                            # Append dynamically to tracking session
+                            if not any(b['brand_name'].lower() == report['brand_name'].lower() for b in st.session_state.scouted_brands):
+                                st.session_state.scouted_brands.append(report)
+                            
+                        except Exception as e:
+                            st.error(f"Unexpected Execution Error: {str(e)}")
+
+    # Display Active Evaluation Report
+    if "active_report" in st.session_state:
+        r = st.session_state.active_report
+        st.write("---")
+        
+        # Display Fallback Alert if API rate limits triggered the Zero-Cost Heuristics engine
+        if r.get("is_fallback", False):
+            st.markdown("""
+                <div class="fallback-box">
+                    <strong>⚠️ API Quota Alert Handled</strong><br>
+                    Gemini Free Tier API quota exceeded or key missing. The pipeline gracefully self-healed, 
+                    using <strong>Deterministic Market Heuristics</strong> to generate this scorecard.
+                </div>
+            """, unsafe_allow_type=True)
+            
+        st.subheader(f"Scorecard: {r['brand_name']}")
+        
+        # Display Core KPI Blocks
+        m_col1, m_col2, m_col3 = st.columns(3)
+        m_col1.metric("Glide Fit Score", f"{r['glide_fit_score']}/10")
+        m_col2.metric("Maturity Score", f"{r['maturity_score']}/10")
+        m_col3.metric("Social Traction", f"{r['social_traction_score']}/10")
+        
+        st.markdown(f"**🌿 Formulation Profile:** {r['formulation_profile']}")
+        st.markdown(f"**💰 Estimated Pricing:** {r['average_price_usd']} ({r['price_tier']})")
+        st.markdown(f"**📦 Saturation in India:** `{r['market_saturation_india']}`")
+        
+        st.info(f"**Strategic Alignment Justification:**\n{r['strategic_justification']}")
 
 with col2:
-    st.markdown("#### Automated Batch Discovery")
-    num_to_evaluate = st.slider("Brands to auto-evaluate:", 1, 10, 3)
-    run_batch = st.button("Run Batch Pipeline")
-
-if run_single:
-    if not api_key:
-        st.error("Please provide a Gemini API Key in the sidebar.")
-    else:
-        with st.spinner(f"Scraping and Evaluating '{brand_input}'..."):
-            try:
-                eval_data = process_brand(brand_input, api_key=api_key)
-                new_row = pd.DataFrame([eval_data])
-                st.session_state.results_df = pd.concat([st.session_state.results_df, new_row], ignore_index=True).drop_duplicates(subset=["Brand Name"])
-                st.success(f"Evaluated {brand_input}!")
-            except Exception as e:
-                st.error(f"Failed to process. Error: {str(e)}")
-
-if run_batch:
-    if not api_key:
-        st.error("Please provide a Gemini API Key in the sidebar.")
-    else:
-        with st.spinner("Initializing Discovery Engine..."):
-            all_brands = fetch_potential_brands()
-            target_brands = all_brands[:num_to_evaluate]
-        
-        st.info(f"Evaluating top {num_to_evaluate} trending brands...")
-        progress_bar = st.progress(0)
-        
-        for i, brand in enumerate(target_brands):
-            with st.spinner(f"[{i+1}/{num_to_evaluate}] Scraping and Evaluating '{brand}'..."):
-                try:
-                    eval_data = process_brand(brand, api_key=api_key)
-                    new_row = pd.DataFrame([eval_data])
-                    st.session_state.results_df = pd.concat([st.session_state.results_df, new_row], ignore_index=True).drop_duplicates(subset=["Brand Name"])
-                except Exception as e:
-                    st.error(f"Failed to process {brand}. Error: {str(e)}")
-            
-            # Smart pause to respect free tier rate limits
-            if i < len(target_brands) - 1:
-                with st.spinner("Pausing 15 seconds to respect free API limits..."):
-                    time.sleep(15)
-
-            progress_bar.progress((i + 1) / num_to_evaluate)
-        st.success("Batch Execution Complete!")
-
-st.markdown("---")
-st.header("📊 Evaluation Dashboard")
-
-if not st.session_state.results_df.empty:
-    df = st.session_state.results_df
+    st.subheader("Interactive Market Mapping & Comparative Benchmarks")
     
-    df['Suitability Score'] = pd.to_numeric(df['Suitability Score'], errors='coerce').fillna(0)
-    df['Global Maturity Score'] = pd.to_numeric(df['Global Maturity Score'], errors='coerce').fillna(0)
-    df['India Exclusivity Score'] = pd.to_numeric(df['India Exclusivity Score'], errors='coerce').fillna(0)
+    # Render Interactive Plotly Visualization for Recruiter Business Review
+    df = pd.DataFrame(st.session_state.scouted_brands)
     
-    c1, c2, c3 = st.columns(3)
-    top_brand = df.loc[df['Suitability Score'].idxmax()] if not df.empty and df['Suitability Score'].max() > 0 else None
+    # Format metrics securely
+    df['glide_fit_score'] = df['glide_fit_score'].astype(float)
+    df['social_traction_score'] = df['social_traction_score'].astype(float)
     
-    with c1: st.metric("Brands Evaluated", len(df))
-    if top_brand is not None:
-        with c2: st.metric("Top Recommended", top_brand['Brand Name'], f"Score: {int(top_brand['Suitability Score'])}")
-    with c3: st.metric("Average Score", int(df['Suitability Score'].mean()))
-        
-    plot_df = df[df['Suitability Score'] > 0]
-    if not plot_df.empty:
-        try:
-            fig = px.scatter(
-                plot_df, x="Global Maturity Score", y="India Exclusivity Score", color="Price Positioning",
-                size="Suitability Score", hover_name="Brand Name", hover_data=["Formulation USP"], text="Brand Name",
-                range_x=[0, 11], range_y=[0, 11], template="plotly_dark",
-                color_discrete_map={"Budget": "#3b82f6", "Mid-Premium": "#10b981", "Luxury": "#8b5cf6", "Unknown": "#64748b"}
-            )
-            fig.update_traces(textposition='top center')
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.error(f"Could not render chart due to data formatting: {e}")
-    else:
-        st.warning("No valid scores to plot. (Check API Key if you see only 0 scores).")
-
-    st.markdown("---")
-    st.subheader("Deep Dive Intelligence")
-    
-    for idx, row in plot_df.iterrows():
-        with st.expander(f"🔎 {row['Brand Name']} - Advanced Analysis (Score: {int(row['Suitability Score'])})"):
-            colA, colB = st.columns([1, 2])
-            with colA:
-                # Radar Chart
-                radar_data = pd.DataFrame(dict(
-                    r=[row['Global Maturity Score'], row['India Exclusivity Score'], row.get('Formulation Complexity Score', 0), row.get('Brand Buzz Score', 0), row.get('Pricing Competitiveness', 0)],
-                    theta=['Global Maturity', 'India Exclusivity', 'Formulation', 'Brand Buzz', 'Pricing Strategy']
-                ))
-                fig_radar = px.line_polar(radar_data, r='r', theta='theta', line_close=True, template="plotly_dark", range_r=[0, 10])
-                fig_radar.update_traces(fill='toself')
-                st.plotly_chart(fig_radar, use_container_width=True)
-            with colB:
-                st.markdown(f"**Hero Product:** {row.get('Hero Product', 'N/A')}")
-                st.markdown(f"**Target Demographic:** {row.get('Target Demographic', 'N/A')}")
-                st.markdown(f"**Market Gap Fit:** {row.get('Market Gap Fit', 'N/A')}")
-                st.markdown(f"**Detailed Strategy:** {row.get('Detailed Logic', row.get('Rationale', ''))}")
-                
-                c_pro, c_con = st.columns(2)
-                with c_pro:
-                    st.success("**Pros**")
-                    for p in row.get('Pros', []): st.write(f"- {p}")
-                with c_con:
-                    st.error("**Risks/Cons**")
-                    for c in row.get('Cons', []): st.write(f"- {c}")
-
-    st.markdown("---")
-    st.subheader("Raw Data & Export")
-    st.dataframe(df, use_container_width=True)
-    
-    # PDF Generator
-    pdf_bytes = generate_pdf_report(df)
-    st.download_button(
-        label="📄 Download Full Intelligence Report (PDF)",
-        data=pdf_bytes,
-        file_name="glide_kbeauty_scout_report.pdf",
-        mime="application/pdf",
-        type="primary"
+    fig = px.scatter(
+        df,
+        x="social_traction_score",
+        y="glide_fit_score",
+        size="glide_fit_score",
+        color="market_saturation_india",
+        hover_name="brand_name",
+        labels={
+            "social_traction_score": "Social Media Traction Score (1-10)",
+            "glide_fit_score": "Glide Launch Alignment Score (1-10)",
+            "market_saturation_india": "Saturation Level in India"
+        },
+        title="Glide Portfolio Fit Assessment Grid",
+        template="plotly_dark",
+        size_max=20
     )
-else:
-    st.info("No brands evaluated yet. Run an evaluation above.")
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    st.subheader("Session Database Snapshot")
+    st.dataframe(df[["brand_name", "price_tier", "market_saturation_india", "glide_fit_score"]], use_container_width=True)
+    
+    # Export options
+    json_str = json.dumps(st.session_state.scouted_brands, indent=2)
+    st.download_button(
+        label="📥 Export Analysis Database as JSON",
+        file_name="scouting_database_export.json",
+        mime="application/json",
+        data=json_str,
+        use_container_width=True
+    )
